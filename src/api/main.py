@@ -7,10 +7,13 @@ inside Docker later. All paths are relative / handled by FraudPredictor
 
 import logging
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from src.models.predictor import FraudPredictor
+from src.monitoring.drift import DriftDetector
+from src.schemas.drift import DriftCheckRequest, DriftCheckResponse
 from src.schemas.prediction import PredictionOutput
 from src.schemas.transaction import TransactionInput
 
@@ -25,6 +28,15 @@ app = FastAPI(title="SentinelML Fraud Detection API", version="0.1.0")
 
 # Loaded ONCE at import time (module-level singleton) — not per-request.
 predictor = FraudPredictor()
+
+# Same pattern as predictor: loaded once, failure degrades gracefully
+# instead of crashing the whole app at import time.
+try:
+    drift_detector = DriftDetector()
+    drift_detector_error = None
+except Exception as e:  # noqa: BLE001 - mirrors predictor.py's graceful-degradation pattern
+    drift_detector = None
+    drift_detector_error = str(e)
 
 
 def _extract_probability(raw_output):
@@ -95,3 +107,19 @@ def predict(transaction: TransactionInput):
         # metadata once that's added, instead of a string literal.
         model_version="v1-lightgbm",
     )
+
+
+@app.post("/drift-check", response_model=DriftCheckResponse)
+def drift_check(request: DriftCheckRequest):
+    """
+    Accepts a batch of raw feature rows and compares them against the
+    REAL reference_sample.csv baseline using PSI (see src/monitoring/drift.py).
+    """
+    if drift_detector is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Drift detector not available: {drift_detector_error}",
+        )
+    live_df = pd.DataFrame([row.model_dump() for row in request.rows])
+    report = drift_detector.compute_drift_report(live_df)
+    return report
