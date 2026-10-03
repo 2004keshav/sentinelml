@@ -4,7 +4,7 @@ Matches the 30 features used to train the LightGBM model:
 Time, V1...V28 (PCA components), Amount.
 """
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TransactionInput(BaseModel):

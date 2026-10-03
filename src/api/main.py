@@ -6,12 +6,13 @@ inside Docker later. All paths are relative / handled by FraudPredictor
 """
 
 import logging
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
-from src.schemas.transaction import TransactionInput
-from src.schemas.prediction import PredictionOutput
 from src.models.predictor import FraudPredictor
+from src.schemas.prediction import PredictionOutput
+from src.schemas.transaction import TransactionInput
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sentinelml")

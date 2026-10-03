@@ -6,9 +6,10 @@ so the same code works in Colab AND inside a Docker container.
 """
 
 import os
+from pathlib import Path
+
 import joblib
 import pandas as pd
-from pathlib import Path
 
 # Path resolution logic:
 # This file lives at:        <project_root>/src/models/predictor.py
@@ -61,7 +62,7 @@ class FraudPredictor:
             return
         try:
             self.model = joblib.load(self.model_path)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — intentionally broad: any load failure should degrade gracefully
             self._load_error = f"Failed to load model: {e}"
 
     def is_ready(self) -> bool:
